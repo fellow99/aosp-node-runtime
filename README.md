@@ -1,16 +1,22 @@
 # aosp-node-runtime
 
-Node.js 的 **Android arm64-v8a 运行时**（`libnode.so` 共享库），供 [aosp-node-bridge](https://github.com/fellow99/aosp-node-bridge) 在应用进程内 `dlopen` 加载。
+[**English**](README.md) · [中文](README_zh.md)
 
-## Maven 坐标
+The **Node.js engine for Android, packaged as an AAR** — a cross-compiled `libnode.so` shared library (arm64-v8a) that [aosp-node-bridge](https://github.com/fellow99/aosp-node-bridge) loads in-process with `dlopen` + `node::Start`.
+
+This repository contains **no embedding API** — only the engine binary, the headers used to build it, and the reproducible cross-compilation pipeline. The bridge/Kotlin API lives in [aosp-node-bridge](https://github.com/fellow99/aosp-node-bridge).
+
+## Maven coordinate
 
 ```
 io.github.fellow99:node-runtime:<node-version>
 ```
 
-版本号 = Node.js 版本号（如 `24.2.0`）。
+The artifact version **equals the Node.js version**. Current release: `24.2.0`.
 
-## 消费
+## Usage
+
+Add the engine alongside the bridge. It is a `runtimeOnly` dependency — your code never links against it directly:
 
 ```kotlin
 // build.gradle.kts
@@ -20,28 +26,60 @@ dependencies {
 }
 ```
 
-## 构建
+The bridge locates `libnode.so` in the APK's native library directory at runtime; swapping Node versions is just changing this dependency (the bridge does not need to be recompiled).
 
-交叉编译在 GitHub Actions 完成（`build-node-android.yml`），产物上传为 GitHub Release。
+## What is in the AAR
 
-手动构建（需要 Linux + Android NDK）：
+```
+jni/arm64-v8a/libnode.so          # Node.js engine (shared library, ET_DYN, no PT_INTERP)
+jni/arm64-v8a/libc++_shared.so    # C++ runtime (this package is the sole provider)
+```
+
+Requirements: `minSdk 24` · ABI `arm64-v8a`.
+
+## How the engine is built
+
+The binary is **not committed** and is never built by hand. [`build-node-android.yml`](.github/workflows/build-node-android.yml) runs on GitHub Actions:
+
+1. Download and checksum-verify the official `node-v<version>.tar.xz` from nodejs.org.
+2. Apply [`scripts/patch-node-source.py`](scripts/patch-node-source.py):
+   - add `--shared --with-intl=none` to the Android configure args,
+   - set host compilers for the cross build,
+   - disable V8's trap handler on Android.
+3. Cross-compile with Android NDK r28 via [`scripts/build-node-android.sh`](scripts/build-node-android.sh) (`./android-configure … && make`).
+4. Assert the result is `ET_DYN`, has no `PT_INTERP`, and exports `node::Start`.
+5. Publish `libnode.so` + headers as a GitHub Release artifact.
+
+Trigger a build manually with the Node version as input:
 
 ```bash
-./scripts/build-node-android.sh <node-source> <ndk> <output-dir> [api-level]
+gh workflow run build-node-android.yml -f node_version=24.2.0 -f android_api=24
 ```
 
-## 仓库结构
+## Repository layout
 
 ```
-node-runtime/           # Android library 模块（AAR 容器）
-  include/node/         # Node.js NAPI + V8 头文件（入库）
-  src/main/jniLibs/     # libnode.so + libc++_shared.so（不入库，CI 投放）
-  src/main/resources/   # node-runtime.properties（版本/SHA-256 元数据）
-scripts/                # 交叉编译脚本
-tools/provision.mjs     # 产物投放 + ELF 门禁
-runtime.lock.json       # 版本 + SHA-256 + 门禁 + 出处（唯一事实源）
+aosp-node-runtime/
+├── node-runtime/                 # Android library module (the AAR container)
+│   ├── include/node/             # NAPI + V8 headers (committed)
+│   └── src/main/jniLibs/         # libnode.so deployed here (git-ignored; CI/provision)
+├── scripts/
+│   ├── build-node-android.sh     # NDK cross-compile
+│   └── patch-node-source.py      # idempotent Node source patches
+├── tools/provision.mjs           # deploy binary + 8-item ELF gate
+├── runtime.lock.json            # version + SHA-256 + gates + provenance (source of truth)
+└── .github/workflows/build-node-android.yml
+```
+
+## Locking and verification
+
+[`runtime.lock.json`](runtime.lock.json) is the single source of truth for the active Node version, binary SHA-256, ELF gates, and provenance. After deploying a build, run:
+
+```bash
+node tools/provision.mjs --check          # verify the deployed libnode.so against the lock
+node tools/provision.mjs --inspect <so>   # print the ELF gate report for a binary
 ```
 
 ## License
 
-MIT（见 [LICENSE](LICENSE)）
+[MIT](LICENSE). Node.js itself is MIT; see `node-runtime/THIRD-PARTY-NOTICES.md` for bundled third-party components.
