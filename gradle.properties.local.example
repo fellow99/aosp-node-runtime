@@ -1,0 +1,8 @@
+# 复制到 ~/.gradle/gradle.properties（用户级，不提交）
+# ── Central Portal ──
+mavenCentralUsername=<your-portal-username>
+mavenCentralPassword=<your-portal-token>
+# ── GPG 签名 ──
+signing.keyId=<your-gpg-key-id>
+signing.password=<your-gpg-passphrase>
+signing.secretKeyRingFile=<path-to-your-gpg-key>

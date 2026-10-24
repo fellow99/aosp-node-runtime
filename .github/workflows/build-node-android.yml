@@ -1,0 +1,99 @@
+name: Build Node.js for Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      node_version:
+        description: "Node.js version (e.g. 24.2.0)"
+        required: true
+        default: "24.2.0"
+        type: string
+      android_api:
+        description: "Android API level"
+        required: true
+        default: "24"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-arm64-v8a:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      NODE_VERSION: ${{ inputs.node_version || '24.2.0' }}
+      ANDROID_API: ${{ inputs.android_api || '24' }}
+      NDK_VERSION: 28.2.13676358
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl file make python3 unzip xz-utils
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: sdkmanager "ndk;$NDK_VERSION"
+
+      - name: Download and verify Node.js source
+        run: |
+          curl --fail --location --retry 3 --output "node-v${NODE_VERSION}.tar.xz" \
+            "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}.tar.xz"
+          curl --fail --location --retry 3 --output SHASUMS256.txt \
+            "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt"
+          grep " node-v${NODE_VERSION}.tar.xz$" SHASUMS256.txt | sha256sum --check
+          tar -xf "node-v${NODE_VERSION}.tar.xz"
+
+      - name: Build arm64-v8a shared library
+        run: |
+          ./scripts/build-node-android.sh \
+            "$PWD/node-v${NODE_VERSION}" \
+            "$ANDROID_HOME/ndk/${NDK_VERSION}" \
+            "$PWD/dist" \
+            "$ANDROID_API"
+
+      - name: Verify build output
+        run: |
+          file dist/bin/arm64-v8a/libnode.so
+          ls -lh dist/bin/arm64-v8a/
+          # Check it's a shared library (not executable)
+          readelf -d dist/bin/arm64-v8a/libnode.so | grep -E "SONAME|NEEDED"
+          # Check node::Start is exported
+          nm -D dist/bin/arm64-v8a/libnode.so | grep "node5Start"
+
+      - name: Package output
+        run: |
+          archive="node-v${NODE_VERSION}-android-arm64-v8a.tar.gz"
+          tar -C dist -czf "$archive" .
+          sha256sum "$archive" > "$archive.sha256"
+          echo "archive=${archive}" >> $GITHUB_ENV
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-${{ env.NODE_VERSION }}-android-arm64-v8a
+          path: |
+            node-v${{ env.NODE_VERSION }}-android-arm64-v8a.tar.gz
+            node-v${{ env.NODE_VERSION }}-android-arm64-v8a.tar.gz.sha256
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${NODE_VERSION}" \
+            "node-v${NODE_VERSION}-android-arm64-v8a.tar.gz" \
+            "node-v${NODE_VERSION}-android-arm64-v8a.tar.gz.sha256" \
+            --title "Node.js v${NODE_VERSION} for Android arm64-v8a" \
+            --notes "Cross-compiled libnode.so (shared library) for Android arm64-v8a (API ${ANDROID_API})." \
+            --prerelease
