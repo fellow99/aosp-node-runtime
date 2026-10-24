@@ -23,9 +23,11 @@ Patches
 3. node.gyp (best-effort)
    - do not build/link the cctest executable for android shared builds.
 
-4. cpu-features (only when node.gyp references it: Node <= 22)
-   - copy the NDK's sources/android/cpufeatures into deps/android.
-     Node 24 detects ARM features via getauxval() and does not need this.
+4. cpu-features
+   - copy the NDK's sources/android/cpufeatures into deps/android and compile
+     it into node_base. Node's vendored zlib calls android_getCpuFeatures()
+     on Android; common.gypi adds the NDK header path but never compiles the
+     implementation, so the symbol would otherwise be undefined at the link.
 """
 
 from __future__ import annotations
@@ -162,21 +164,49 @@ def patch_node_gyp_cctest(root: Path) -> None:
     print(f"  patched: node.gyp (skip {count} cctest target(s) on android)")
 
 
-def maybe_copy_cpu_features(root: Path, ndk: Path) -> None:
-    """Only Node <= 22 node.gyp references deps/android/cpu-features.c."""
-    gyp = root / "node.gyp"
-    references = gyp.exists() and "deps/android/cpu-features.c" in gyp.read_text(encoding="utf-8")
-    if not references:
-        print("  skip: cpu-features (node.gyp does not reference deps/android)")
-        return
+def patch_cpu_features(root: Path, ndk: Path) -> None:
+    """Link the legacy NDK cpu-features helper.
+
+    Node's vendored zlib (deps/zlib/cpu_features.c) calls android_getCpuFeatures()
+    under ARMV8_OS_ANDROID. common.gypi puts the NDK cpufeatures *include dir* on
+    the command line (so the header resolves), but nothing compiles cpu-features.c,
+    so the symbol is undefined at the final link (--no-allow-shlib-undefined).
+    Copy the NDK source into deps/android and add it to the node_base target so it
+    is compiled into libnode.so. Required for Node >= 18 (V8 may use getauxval,
+    but zlib's ARM CRC32/PMULL detection still uses the legacy helper).
+    """
     src = ndk / "sources" / "android" / "cpufeatures"
+    if not (src / "cpu-features.c").is_file():
+        raise PatchError(
+            f"Missing NDK source: {src / 'cpu-features.c'} "
+            "(use an NDK that still ships sources/android/cpufeatures, e.g. r28)"
+        )
     dst = root / "deps" / "android"
     dst.mkdir(parents=True, exist_ok=True)
     for name in ("cpu-features.c", "cpu-features.h"):
-        if not (src / name).is_file():
-            raise PatchError(f"Missing NDK source: {src / name}")
         shutil.copy2(src / name, dst / name)
     print("  copied: NDK cpu-features -> deps/android")
+
+    gyp = root / "node.gyp"
+    text = gyp.read_text(encoding="utf-8")
+    if "'deps/android/cpu-features.c'" in text or '"deps/android/cpu-features.c"' in text:
+        print("  already patched: node.gyp (android cpu-features source)")
+        return
+    # Inject into the node_base target's conditions (unique anchor in Node 22/24).
+    anchor = (
+        "      'conditions': [\n"
+        '        [ \'openssl_default_cipher_list!=""\', {\n'
+    )
+    condition = (
+        "        [ 'OS==\"android\"', {\n"
+        "          'sources': [ 'deps/android/cpu-features.c' ],\n"
+        "          'include_dirs': [ 'deps/android' ],\n"
+        "        }],\n"
+    )
+    if anchor not in text:
+        raise PatchError("node.gyp node_base conditions anchor not found for cpu-features")
+    gyp.write_text(text.replace(anchor, "      'conditions': [\n" + condition + '        [ \'openssl_default_cipher_list!=""\', {\n', 1), encoding="utf-8")
+    print("  patched: node.gyp (compile cpu-features.c into node_base)")
 
 
 def main() -> int:
@@ -202,7 +232,7 @@ def main() -> int:
     patch_configure(source)
     patch_trap_handler(source)
     patch_node_gyp_cctest(source)
-    maybe_copy_cpu_features(source, ndk)
+    patch_cpu_features(source, ndk)
     print("Done.")
     return 0
 
