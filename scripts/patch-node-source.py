@@ -25,9 +25,10 @@ Patches
 
 4. cpu-features
    - copy the NDK's sources/android/cpufeatures into deps/android and compile
-     it into node_base. Node's vendored zlib calls android_getCpuFeatures()
-     on Android; common.gypi adds the NDK header path but never compiles the
-     implementation, so the symbol would otherwise be undefined at the link.
+     it into the zlib gyp target (deps/zlib/zlib.gyp). Node's vendored zlib
+     calls android_getCpuFeatures() on Android; common.gypi adds the NDK header
+     path but never compiles the implementation, so the symbol would otherwise
+     be undefined for every consumer of libzlib.a (libnode.so and openssl-cli).
 """
 
 from __future__ import annotations
@@ -170,10 +171,13 @@ def patch_cpu_features(root: Path, ndk: Path) -> None:
     Node's vendored zlib (deps/zlib/cpu_features.c) calls android_getCpuFeatures()
     under ARMV8_OS_ANDROID. common.gypi puts the NDK cpufeatures *include dir* on
     the command line (so the header resolves), but nothing compiles cpu-features.c,
-    so the symbol is undefined at the final link (--no-allow-shlib-undefined).
-    Copy the NDK source into deps/android and add it to the node_base target so it
-    is compiled into libnode.so. Required for Node >= 18 (V8 may use getauxval,
-    but zlib's ARM CRC32/PMULL detection still uses the legacy helper).
+    so the symbol is undefined whenever libzlib.a is linked (libnode.so AND the
+    openssl-cli target; --no-allow-shlib-undefined). Copy the NDK source into
+    deps/android and add it to the **zlib gyp target itself**, so every consumer of
+    libzlib.a gets the symbol from within the archive. (Injecting it into node_base
+    instead fixed libnode.so but left openssl-cli failing on Node 24.22.x.)
+    Required for Node >= 18 (V8 may use getauxval, but zlib's ARM CRC32/PMULL
+    detection still uses the legacy helper).
     """
     src = ndk / "sources" / "android" / "cpufeatures"
     if not (src / "cpu-features.c").is_file():
@@ -187,26 +191,35 @@ def patch_cpu_features(root: Path, ndk: Path) -> None:
         shutil.copy2(src / name, dst / name)
     print("  copied: NDK cpu-features -> deps/android")
 
-    gyp = root / "node.gyp"
+    gyp = root / "deps" / "zlib" / "zlib.gyp"
     text = gyp.read_text(encoding="utf-8")
-    if "'deps/android/cpu-features.c'" in text or '"deps/android/cpu-features.c"' in text:
-        print("  already patched: node.gyp (android cpu-features source)")
+    if "../android/cpu-features.c" in text:
+        print("  already patched: deps/zlib/zlib.gyp (android cpu-features source)")
         return
-    # Inject into the node_base target's conditions (unique anchor in Node 22/24).
+    # Anchor: the zlib static_library target's own conditions block.
+    # gyp resolves sources relative to THIS .gyp file (deps/zlib/), hence ../android.
     anchor = (
-        "      'conditions': [\n"
-        '        [ \'openssl_default_cipher_list!=""\', {\n'
+        "          'direct_dependent_settings': {\n"
+        "            'include_dirs': [ '<(ZLIB_ROOT)' ],\n"
+        "          },\n"
+        "          'conditions': [\n"
+        "            ['OS!=\"win\"', {\n"
     )
-    condition = (
-        "        [ 'OS==\"android\"', {\n"
-        "          'sources': [ 'deps/android/cpu-features.c' ],\n"
-        "          'include_dirs': [ 'deps/android' ],\n"
-        "        }],\n"
+    replacement = (
+        "          'direct_dependent_settings': {\n"
+        "            'include_dirs': [ '<(ZLIB_ROOT)' ],\n"
+        "          },\n"
+        "          'conditions': [\n"
+        "            ['OS==\"android\"', {\n"
+        "              'sources': [ '../android/cpu-features.c' ],\n"
+        "              'include_dirs': [ '../android' ],\n"
+        "            }],\n"
+        "            ['OS!=\"win\"', {\n"
     )
-    if anchor not in text:
-        raise PatchError("node.gyp node_base conditions anchor not found for cpu-features")
-    gyp.write_text(text.replace(anchor, "      'conditions': [\n" + condition + '        [ \'openssl_default_cipher_list!=""\', {\n', 1), encoding="utf-8")
-    print("  patched: node.gyp (compile cpu-features.c into node_base)")
+    if text.count(anchor) != 1:
+        raise PatchError(f"zlib.gyp zlib-target anchor not unique/found ({text.count(anchor)})")
+    gyp.write_text(text.replace(anchor, replacement, 1), encoding="utf-8")
+    print("  patched: deps/zlib/zlib.gyp (compile cpu-features.c into zlib target)")
 
 
 def main() -> int:
