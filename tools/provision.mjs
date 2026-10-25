@@ -199,9 +199,19 @@ function findLibcxx() {
 
 function main() {
   const lock = readLock();
-  const active = lock.active;
-  const rel = lock.releases.find((x) => x.node === active.node && x.abi === active.abi);
-  if (!rel) throw new Error(`runtime.lock.json 里没有 active 记录：${JSON.stringify(active)}`);
+  // 多版本支持：--node <ver> 选指定 release；否则用 active。
+  const wantNode = argOf('--node') || lock.active.node;
+  const wantAbi = argOf('--abi') || lock.active.abi;
+  const rel = lock.releases.find((x) => x.node === wantNode && x.abi === wantAbi);
+  if (!rel) {
+    throw new Error(
+      `runtime.lock.json 里没有记录 node=${wantNode} abi=${wantAbi}；现有：` +
+      lock.releases.map((x) => `${x.node}/${x.abi}`).join(', '),
+    );
+  }
+  const active = { node: rel.node, abi: rel.abi };
+
+  say(`目标 release：node=${rel.node} abi=${rel.abi}`);
 
   const inspectPath = argOf('--inspect');
   if (inspectPath) {
