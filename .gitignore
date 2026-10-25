@@ -7,3 +7,6 @@ local.properties
 node-runtime/src/main/jniLibs/**/*.so
 # 但头文件入库
 !node-runtime/include/
+
+# provision download/extract workspace
+.dist/
