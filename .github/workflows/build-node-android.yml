@@ -13,6 +13,11 @@ on:
         required: true
         default: "24"
         type: string
+      prerelease:
+        description: "Publish the GitHub Release as a prerelease (untick for LTS/stable)"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -103,15 +108,23 @@ jobs:
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ inputs.prerelease || false }}
         run: |
           archive="node-v${NODE_VERSION}-android-arm64-v8a.tar.gz"
+          notes="Cross-compiled, stripped libnode.so (shared library) + libc++_shared.so for Android arm64-v8a (API ${ANDROID_API}). Built with NDK ${NDK_VERSION}; see BUILD-METADATA.txt in the archive."
+          preflag=(); [ "$PRERELEASE" = "true" ] && preflag=(--prerelease)
           if gh release view "v${NODE_VERSION}" >/dev/null 2>&1; then
-            # Re-build: replace the assets on the existing (pre)release.
+            # Re-build: replace the assets on the existing release, sync prerelease flag.
             gh release upload "v${NODE_VERSION}" "$archive" "$archive.sha256" --clobber
+            if [ "$PRERELEASE" = "true" ]; then
+              gh release edit "v${NODE_VERSION}" --prerelease
+            else
+              gh release edit "v${NODE_VERSION}" --prerelease=false
+            fi
           else
             gh release create "v${NODE_VERSION}" \
               "$archive" "$archive.sha256" \
               --title "Node.js v${NODE_VERSION} for Android arm64-v8a" \
-              --notes "Cross-compiled, stripped libnode.so (shared library) + libc++_shared.so for Android arm64-v8a (API ${ANDROID_API}). Built with NDK ${NDK_VERSION}; see BUILD-METADATA.txt in the archive." \
-              --prerelease
+              --notes "$notes" \
+              "${preflag[@]}"
           fi
