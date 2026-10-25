@@ -18,7 +18,7 @@
         "archive": "node-v24.2.0-android-arm64-v8a.tar.gz",
         "archiveSize": 26117400,
         "archiveSha256": "fdb8576e603d42a2606a665115223ddf63223f9dfc72eac44567189f6b5f6bcb",
-        "prerelease": true
+        "prerelease": false
       },
       "tier": "target",
       "builtFrom": {
@@ -53,7 +53,15 @@
         "sizeMatch": true,
         "pageAlign16k": true
       },
-      "status": "released (GitHub prerelease v24.2.0)"
+      "mavenCentral": {
+        "coordinates": "io.github.fellow99:node-runtime:24.2.0",
+        "aar": "https://repo1.maven.org/maven2/io/github/fellow99/node-runtime/24.2.0/node-runtime-24.2.0.aar",
+        "aarSize": 25392217,
+        "deploymentId": "f610b50b-a831-4666-b8e0-47eae0cc954b",
+        "tag": "node-runtime-v24.2.0",
+        "published": true
+      },
+      "status": "published to Maven Central (io.github.fellow99:node-runtime:24.2.0)"
     }
   ],
   "matrix": {
