@@ -40,7 +40,19 @@ test -f out/Release/libnode.so
 rm -rf "$OUTPUT_DIR"
 HEADERS="$OUTPUT_DIR/include/node"
 mkdir -p "$OUTPUT_DIR/bin/arm64-v8a" "$HEADERS/libplatform" "$HEADERS/cppgc"
-cp out/Release/libnode.so "$OUTPUT_DIR/bin/arm64-v8a/libnode.so"
+
+LIBNODE="$OUTPUT_DIR/bin/arm64-v8a/libnode.so"
+RAW_SIZE=$(stat -c%s out/Release/libnode.so)
+cp out/Release/libnode.so "$LIBNODE"
+
+# Strip DWARF debug info (and local symbols) but KEEP the dynamic + global symbol
+# tables: node::Start / napi_* live in .dynsym, which stripping never removes, so
+# runtime linking and backtrace symbolization are unaffected. Saves ~25 MB and the
+# released bytes are exactly what tools/provision.mjs deploys (hash in lock).
+"$TOOLCHAIN/bin/llvm-strip" --strip-unneeded "$LIBNODE"
+STRIPPED_SIZE=$(stat -c%s "$LIBNODE")
+LIBNODE_SHA256=$(sha256sum "$LIBNODE" | awk '{print $1}')
+
 cp common.gypi config.gypi "$HEADERS/" 2>/dev/null || true
 cp src/*.h "$HEADERS/"
 cp deps/v8/include/v8*.h "$HEADERS/" 2>/dev/null || true
@@ -50,11 +62,20 @@ cp -r deps/uv/include/* "$HEADERS/" 2>/dev/null || true
 cp deps/zlib/zconf.h deps/zlib/zlib.h "$HEADERS/" 2>/dev/null || true
 cp LICENSE "$OUTPUT_DIR/LICENSE.node" 2>/dev/null || true
 
-# libc++_shared.so from NDK
-LLVM_LIB="$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/*/lib/linux/aarch64/libc++_shared.so"
-if ls $LLVM_LIB 2>/dev/null | head -1 | grep -q .; then
-    cp $(ls $LLVM_LIB | head -1) "$OUTPUT_DIR/bin/arm64-v8a/libc++_shared.so"
+# libc++_shared.so — libnode.so has DT_NEEDED on it. NDK r23+ ships it in the
+# sysroot (the old lib/clang/<ver>/lib/linux glob no longer exists, which is why
+# a silent miss here previously produced an AAR with no libc++_shared.so).
+LIBCXX="$TOOLCHAIN/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so"
+if [ ! -f "$LIBCXX" ]; then
+    LIBCXX=$(find "$TOOLCHAIN" -name libc++_shared.so -path '*aarch64*' 2>/dev/null | head -1)
 fi
+if [ -z "$LIBCXX" ] || [ ! -f "$LIBCXX" ]; then
+    echo "ERROR: libc++_shared.so (arm64) not found under NDK $NDK_DIR" >&2
+    exit 1
+fi
+cp "$LIBCXX" "$OUTPUT_DIR/bin/arm64-v8a/libc++_shared.so"
+LIBCXX_SHA256=$(sha256sum "$LIBCXX" | awk '{print $1}')
+echo "Bundled libc++_shared.so <- $LIBCXX"
 
 VERSION="$(sed -nE 's/^#define NODE_(MAJOR|MINOR|PATCH)_VERSION ([0-9]+)$/\2/p' src/node_version.h | paste -sd . -)"
 cat >"$OUTPUT_DIR/BUILD-METADATA.txt" <<EOF
@@ -62,9 +83,14 @@ node_version=$VERSION
 android_abi=arm64-v8a
 android_api=$ANDROID_API
 ndk=$(basename "$NDK_DIR")
+libnode_size=$STRIPPED_SIZE
+libnode_size_unstripped=$RAW_SIZE
+libnode_sha256=$LIBNODE_SHA256
+libcxx_sha256=$LIBCXX_SHA256
+stripped=llvm-strip --strip-unneeded
 EOF
 
 echo "=== Build complete ==="
-file "$OUTPUT_DIR/bin/arm64-v8a/libnode.so"
-echo "Node version: $VERSION"
+file "$LIBNODE"
+echo "Node version: $VERSION (libnode ${RAW_SIZE} -> ${STRIPPED_SIZE} bytes)"
 ls -lh "$OUTPUT_DIR/bin/arm64-v8a/"

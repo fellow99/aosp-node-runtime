@@ -67,12 +67,22 @@ jobs:
 
       - name: Verify build output
         run: |
-          file dist/bin/arm64-v8a/libnode.so
+          LIBNODE=dist/bin/arm64-v8a/libnode.so
+          file "$LIBNODE"
           ls -lh dist/bin/arm64-v8a/
-          # Check it's a shared library (not executable)
-          readelf -d dist/bin/arm64-v8a/libnode.so | grep -E "SONAME|NEEDED"
-          # Check node::Start is exported
-          nm -D dist/bin/arm64-v8a/libnode.so | grep "node5Start"
+          # Shared object, AArch64, no interpreter
+          readelf -h "$LIBNODE" | grep -E "Type:|Machine:"
+          readelf -d "$LIBNODE" | grep -E "SONAME|NEEDED"
+          # node::Start must be an exported DYNAMIC symbol (survives stripping)
+          nm -D "$LIBNODE" | grep "node5Start"
+          # 16 KB page alignment (NDK r28 default; required by Play Store)
+          echo "LOAD aligns:"; readelf -lW "$LIBNODE" | awk '/LOAD/{print $NF}' | sort -u
+          if readelf -lW "$LIBNODE" | awk '/LOAD/{print strtonum($NF)}' | grep -Evx '16384'; then
+            echo "ERROR: a LOAD segment is not 16 KB (0x4000) aligned" >&2; exit 1
+          fi
+          # libc++_shared.so MUST be bundled (libnode.so has a DT_NEEDED on it)
+          test -f dist/bin/arm64-v8a/libc++_shared.so
+          echo "--- BUILD-METADATA.txt ---"; cat dist/BUILD-METADATA.txt
 
       - name: Package output
         run: |
@@ -94,9 +104,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v${NODE_VERSION}" \
-            "node-v${NODE_VERSION}-android-arm64-v8a.tar.gz" \
-            "node-v${NODE_VERSION}-android-arm64-v8a.tar.gz.sha256" \
-            --title "Node.js v${NODE_VERSION} for Android arm64-v8a" \
-            --notes "Cross-compiled libnode.so (shared library) for Android arm64-v8a (API ${ANDROID_API})." \
-            --prerelease
+          archive="node-v${NODE_VERSION}-android-arm64-v8a.tar.gz"
+          if gh release view "v${NODE_VERSION}" >/dev/null 2>&1; then
+            # Re-build: replace the assets on the existing (pre)release.
+            gh release upload "v${NODE_VERSION}" "$archive" "$archive.sha256" --clobber
+          else
+            gh release create "v${NODE_VERSION}" \
+              "$archive" "$archive.sha256" \
+              --title "Node.js v${NODE_VERSION} for Android arm64-v8a" \
+              --notes "Cross-compiled, stripped libnode.so (shared library) + libc++_shared.so for Android arm64-v8a (API ${ANDROID_API}). Built with NDK ${NDK_VERSION}; see BUILD-METADATA.txt in the archive." \
+              --prerelease
+          fi
