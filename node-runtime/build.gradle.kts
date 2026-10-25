@@ -9,8 +9,10 @@ plugins {
 
 apply(from = rootProject.file("publish.gradle.kts"))
 
-version = (providers.gradleProperty("NODE_VERSION").orNull
-    ?: error("node-runtime 需要 NODE_VERSION（= Node 版本）；当前未设置"))
+// 不能用 NODE_* 前缀：Gradle 9.4 把所有 NODE_ 前缀属性保留给内置 Node 工具链，-P 覆盖会被忽略。
+// 多版本发布：gradle publishToMavenCentral -PRUNTIME_VERSION=22.23.4 -PRELEASE=true
+version = (providers.gradleProperty("RUNTIME_VERSION").orNull
+    ?: error("node-runtime 需要 RUNTIME_VERSION（= Node 版本）；当前未设置"))
 afterEvaluate {
     val publishing = extensions.getByType(org.gradle.api.publish.PublishingExtension::class.java)
     publishing.publications.forEach { pub ->

@@ -7,7 +7,7 @@
 // 纪律（对齐 ohos-node-bridge 发布口径）：
 //   - 敏感值（Portal Token / GPG）只从用户级 ~/.gradle/gradle.properties 读取，绝不入库
 //   - RELEASE=false（默认）时 Central/签名任务被禁用，防误发
-//   - 版本号：node-bridge = VERSION_NAME；node-runtime = NODE_VERSION（子模块 afterEvaluate 覆盖）
+//   - 版本号：node-bridge = VERSION_NAME；node-runtime = RUNTIME_VERSION（子模块 afterEvaluate 覆盖）
 //   - 坐标：groupId = 模块 android.namespace；artifactId = 模块名
 
 // 插件 jar 在模块 buildscript classpath：用该 classloader 取类并 apply（脚本自身 classloader 看不到它）。
@@ -37,11 +37,11 @@ fun mp(name: String, vararg args: Any?) {
     }
 }
 // 坐标：groupId 固定 io.github.fellow99（与 README/规划一致）。
-// version：node-bridge = VERSION_NAME；node-runtime = NODE_VERSION（= Node 版本，
+// version：node-bridge = VERSION_NAME；node-runtime = RUNTIME_VERSION（= Node 版本，
 // 由 tools/provision.mjs 与 runtime.lock.json 做一致性断言）。
 val artifactId = project.name
 // 版本：node-bridge = VERSION_NAME（自身 semver）；
-//       node-runtime 的坐标 version 在模块 build.gradle.kts 里经 project.version + publication 覆写为 NODE_VERSION。
+//       node-runtime 的坐标 version 在模块 build.gradle.kts 里经 project.version + publication 覆写为 RUNTIME_VERSION。
 val versionName = providers.gradleProperty("VERSION_NAME").orNull ?: "0.1.0"
 mp("coordinates", "io.github.fellow99", artifactId, versionName)
 mp("pomFromGradleProperties")
