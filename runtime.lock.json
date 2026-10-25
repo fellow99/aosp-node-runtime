@@ -1,7 +1,7 @@
 {
   "$comment": "Runtime single source of truth: version + SHA-256 + gates + provenance. Binaries are NOT committed; CI (build-node-android.yml) builds libnode.so and tools/provision.mjs deploys it. See README.md.",
   "active": {
-    "node": "24.2.0",
+    "node": "24.22.1",
     "abi": "arm64-v8a"
   },
   "releases": [
@@ -51,10 +51,18 @@
     {
       "node": "24.22.1",
       "abi": "arm64-v8a",
-      "size": null,
-      "sha256": null,
+      "size": 71070040,
+      "sha256": "f6a1610adf1794dd83f1640c8470d8f0ebf4d0b408e6026444a76fc8712f1c31",
       "soname": "libnode.so",
       "source": "self-built: nodejs/node@v24.22.1 + Android NDK r28 (28.2.13676358)",
+      "release": {
+        "tag": "v24.22.1",
+        "url": "https://github.com/fellow99/aosp-node-runtime/releases/tag/v24.22.1",
+        "archive": "node-v24.22.1-android-arm64-v8a.tar.gz",
+        "archiveSize": 24666464,
+        "archiveSha256": "41011d449d38a81f3697d914090a91a6c5f7667283d5410ac906b02b98e4b600",
+        "prerelease": false
+      },
       "tier": "target",
       "builtFrom": {
         "tag": "node v24.22.1",
@@ -62,25 +70,27 @@
         "androidApi": 24,
         "configure": "./configure --dest-cpu=arm64 --dest-os=android --openssl-no-asm --with-intl=none --cross-compiling --shared",
         "note": "cpu-features provided via deps/zlib/zlib.gyp (openssl-cli-safe)",
-        "stripped": "llvm-strip --strip-unneeded"
+        "stripped": "llvm-strip --strip-unneeded",
+        "sizeUnstripped": 96341272
       },
       "libcxx": {
         "name": "libc++_shared.so",
         "source": "NDK r28 sysroot (aarch64-linux-android), llvm-strip --strip-unneeded",
-        "size": null,
-        "sha256": null
+        "size": 1253544,
+        "sha256": "cd61762848882a16c8244c964a6f396c0caa0b440588a210ce9cc4ab0e6d9f0c",
+        "sizeUnstripped": 9236352
       },
       "gates": {
-        "note": "Populated by tools/provision.mjs --inspect/--out after CI build",
-        "eTypeEtDyn": null,
-        "ptInterp": null,
-        "eMachineAArch64": null,
-        "startSym": null,
-        "sha256Match": null,
-        "sizeMatch": null,
-        "pageAlign16k": null
+        "eTypeEtDyn": true,
+        "ptInterp": 0,
+        "eMachineAArch64": true,
+        "soname": "libnode.so",
+        "startSym": "_ZN4node5StartEiPPc defined + exported",
+        "sha256Match": true,
+        "sizeMatch": true,
+        "pageAlign16k": true
       },
-      "status": "building (GitHub Actions, sha 2c54e93)"
+      "status": "released (GitHub v24.22.1; Maven Central publish pending)"
     },
     {
       "node": "24.2.0",

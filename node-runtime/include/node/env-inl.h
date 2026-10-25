@@ -106,8 +106,10 @@ v8::Local<v8::Array> AsyncHooks::js_execution_async_resources() {
 }
 
 v8::Local<v8::Object> AsyncHooks::native_execution_async_resource(size_t i) {
-  if (i >= native_execution_async_resources_.size()) return {};
-  return native_execution_async_resources_[i];
+  if (i >= native_execution_async_resources_.size() ||
+      native_execution_async_resources_[i] == nullptr)
+    return {};
+  return *native_execution_async_resources_[i];
 }
 
 inline v8::Local<v8::String> AsyncHooks::provider_string(int idx) {
@@ -613,6 +615,10 @@ inline void Environment::set_can_call_into_js(bool can_call_into_js) {
   can_call_into_js_ = can_call_into_js;
 }
 
+inline bool Environment::is_processing_v8_interrupt() const {
+  return is_processing_v8_interrupt_;
+}
+
 inline bool Environment::has_run_bootstrapping_code() const {
   return principal_realm_->has_run_bootstrapping_code();
 }
@@ -701,6 +707,10 @@ bool Environment::source_maps_enabled() const {
 
 inline uint64_t Environment::thread_id() const {
   return thread_id_;
+}
+
+inline std::string_view Environment::thread_name() const {
+  return thread_name_;
 }
 
 inline worker::Worker* Environment::worker_context() const {
@@ -835,12 +845,20 @@ void Environment::set_process_exit_handler(
 #undef VY
 #undef VP
 
+#define V(Name, label, _, __)                                                  \
+  inline v8::Local<v8::String> IsolateData::Name##_permission_string() const { \
+    return Name##_permission_string##_.Get(isolate_);                          \
+  }
+  PERMISSIONS(V)
+#undef V
+
 #define VM(PropertyName) V(PropertyName##_binding_template, v8::ObjectTemplate)
 #define V(PropertyName, TypeName)                                              \
   inline v8::Local<TypeName> IsolateData::PropertyName() const {               \
     return PropertyName##_.Get(isolate_);                                      \
   }                                                                            \
   inline void IsolateData::set_##PropertyName(v8::Local<TypeName> value) {     \
+    CHECK(PropertyName##_.IsEmpty());                                          \
     PropertyName##_.Set(isolate_, value);                                      \
   }
   PER_ISOLATE_TEMPLATE_PROPERTIES(V)
@@ -862,6 +880,13 @@ void Environment::set_process_exit_handler(
 #undef VS
 #undef VY
 #undef VP
+
+#define V(Name, label, _, __)                                                  \
+  inline v8::Local<v8::String> Environment::Name##_permission_string() const { \
+    return isolate_data()->Name##_permission_string();                         \
+  }
+  PERMISSIONS(V)
+#undef V
 
 #define V(PropertyName, TypeName)                                              \
   inline v8::Local<TypeName> Environment::PropertyName() const {               \
@@ -890,7 +915,7 @@ v8::Local<v8::Context> Environment::context() const {
   return principal_realm()->context();
 }
 
-Realm* Environment::principal_realm() const {
+PrincipalRealm* Environment::principal_realm() const {
   return principal_realm_.get();
 }
 
