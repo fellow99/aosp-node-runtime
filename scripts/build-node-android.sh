@@ -73,9 +73,14 @@ if [ -z "$LIBCXX" ] || [ ! -f "$LIBCXX" ]; then
     echo "ERROR: libc++_shared.so (arm64) not found under NDK $NDK_DIR" >&2
     exit 1
 fi
-cp "$LIBCXX" "$OUTPUT_DIR/bin/arm64-v8a/libc++_shared.so"
-LIBCXX_SHA256=$(sha256sum "$LIBCXX" | awk '{print $1}')
-echo "Bundled libc++_shared.so <- $LIBCXX"
+OUT_LIBCXX="$OUTPUT_DIR/bin/arm64-v8a/libc++_shared.so"
+LIBCXX_RAW_SIZE=$(stat -c%s "$LIBCXX")
+cp "$LIBCXX" "$OUT_LIBCXX"
+# NDK r28 ships an UNSTRIPPED libc++_shared.so in the sysroot (~9 MB with DWARF).
+# Strip it the same way as libnode.so; .dynsym/SONAME/DT_NEEDED survive (~1.2 MB).
+"$TOOLCHAIN/bin/llvm-strip" --strip-unneeded "$OUT_LIBCXX"
+LIBCXX_SHA256=$(sha256sum "$OUT_LIBCXX" | awk '{print $1}')
+echo "Bundled libc++_shared.so <- $LIBCXX (${LIBCXX_RAW_SIZE} -> $(stat -c%s "$OUT_LIBCXX") bytes)"
 
 VERSION="$(sed -nE 's/^#define NODE_(MAJOR|MINOR|PATCH)_VERSION ([0-9]+)$/\2/p' src/node_version.h | paste -sd . -)"
 cat >"$OUTPUT_DIR/BUILD-METADATA.txt" <<EOF

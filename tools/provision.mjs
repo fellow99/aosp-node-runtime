@@ -244,12 +244,18 @@ function main() {
   const dest = path.join(destDir, 'libnode.so');
   fs.copyFileSync(from, dest);
 
-  const cxx = findLibcxx();
+  // Prefer a libc++_shared.so sitting next to the source libnode.so — that is the
+  // NDK-r28, CI-stripped byte-for-byte companion from the release tarball. Fall
+  // back to the locally installed NDK (r27 ships it pre-stripped; r28+ unstripped,
+  // in which case AGP's app-side strip task trims it, but prefer the tarball copy
+  // so the released AAR always contains the exact provenance bytes).
+  const siblingCxx = path.join(path.dirname(path.resolve(from)), 'libc++_shared.so');
+  const cxx = fs.existsSync(siblingCxx) ? siblingCxx : findLibcxx();
   if (cxx) {
     fs.copyFileSync(cxx, path.join(destDir, 'libc++_shared.so'));
     say(`✔ libc++_shared.so ← ${cxx}`);
   } else {
-    say('! 未找到 libc++_shared.so（NDK 未安装？）—— APK 里会缺这个依赖，dlopen 必失败');
+    say('! 未找到 libc++_shared.so（来源目录无伴生文件且本地 NDK 缺失？）—— APK 里会缺这个依赖，dlopen 必失败');
   }
 
   if (has('--include-headers')) {
