@@ -114,16 +114,20 @@ jobs:
           notes="Cross-compiled, stripped libnode.so (shared library) + libc++_shared.so for Android arm64-v8a (API ${ANDROID_API}). Built with NDK ${NDK_VERSION}; see BUILD-METADATA.txt in the archive."
           preflag=(); [ "$PRERELEASE" = "true" ] && preflag=(--prerelease)
           if gh release view "v${NODE_VERSION}" >/dev/null 2>&1; then
-            # Re-build: replace the assets on the existing release, sync prerelease flag.
+            # Re-build: replace the assets on the existing release, pin its tag to
+            # this exact build commit, sync prerelease flag.
             gh release upload "v${NODE_VERSION}" "$archive" "$archive.sha256" --clobber
             if [ "$PRERELEASE" = "true" ]; then
-              gh release edit "v${NODE_VERSION}" --prerelease
+              gh release edit "v${NODE_VERSION}" --target "$GITHUB_SHA" --prerelease
             else
-              gh release edit "v${NODE_VERSION}" --prerelease=false
+              gh release edit "v${NODE_VERSION}" --target "$GITHUB_SHA" --prerelease=false
             fi
           else
+            # --target pins the tag v<NODE_VERSION> to THIS run's commit instead of
+            # main's HEAD at publish time (the build takes ~2 h and main may move).
             gh release create "v${NODE_VERSION}" \
               "$archive" "$archive.sha256" \
+              --target "$GITHUB_SHA" \
               --title "Node.js v${NODE_VERSION} for Android arm64-v8a" \
               --notes "$notes" \
               "${preflag[@]}"
