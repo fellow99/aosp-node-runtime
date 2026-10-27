@@ -90,7 +90,7 @@
         "sizeMatch": true,
         "pageAlign16k": true
       },
-      "status": "local rebuild with small-icu (2026-10-27); GitHub Release v24.22.1 assets pending re-upload",
+      "status": "released (GitHub v24.22.1 small-icu rebuild, tag pinned to 2778269; Maven Central publish pending)",
       "intl": "small-icu"
     },
     {
