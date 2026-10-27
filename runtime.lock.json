@@ -51,27 +51,27 @@
     {
       "node": "24.22.1",
       "abi": "arm64-v8a",
-      "size": 71070040,
-      "sha256": "f6a1610adf1794dd83f1640c8470d8f0ebf4d0b408e6026444a76fc8712f1c31",
+      "size": 81491624,
+      "sha256": "be1d16414a1e68983f27ac16e287395b71e4f4f5a79d78a78a741b583472397e",
       "soname": "libnode.so",
-      "source": "self-built: nodejs/node@v24.22.1 + Android NDK r28 (28.2.13676358)",
+      "source": "self-built: nodejs/node@v24.22.1 + Android NDK r28c (28.2.13676358)",
       "release": {
         "tag": "v24.22.1",
         "url": "https://github.com/fellow99/aosp-node-runtime/releases/tag/v24.22.1",
         "archive": "node-v24.22.1-android-arm64-v8a.tar.gz",
-        "archiveSize": 24666464,
-        "archiveSha256": "41011d449d38a81f3697d914090a91a6c5f7667283d5410ac906b02b98e4b600",
+        "archiveSize": 84617236,
+        "archiveSha256": "fcf61ffcec322b74055df67db590b331aeb6150e14ce40577d913c1f4548d3b9",
         "prerelease": false
       },
       "tier": "target",
       "builtFrom": {
         "tag": "node v24.22.1",
-        "ndk": "r28 (28.2.13676358)",
+        "ndk": "r28c (28.2.13676358)",
         "androidApi": 24,
-        "configure": "./configure --dest-cpu=arm64 --dest-os=android --openssl-no-asm --with-intl=none --cross-compiling --shared",
+        "configure": "./configure --dest-cpu=arm64 --dest-os=android --openssl-no-asm --with-intl=small-icu --cross-compiling --shared",
         "note": "cpu-features provided via deps/zlib/zlib.gyp (openssl-cli-safe)",
         "stripped": "llvm-strip --strip-unneeded",
-        "sizeUnstripped": 96341272
+        "sizeUnstripped": 108413624
       },
       "libcxx": {
         "name": "libc++_shared.so",
@@ -90,7 +90,8 @@
         "sizeMatch": true,
         "pageAlign16k": true
       },
-      "status": "released (GitHub v24.22.1; Maven Central publish pending)"
+      "status": "local rebuild with small-icu (2026-10-27); GitHub Release v24.22.1 assets pending re-upload",
+      "intl": "small-icu"
     },
     {
       "node": "24.2.0",

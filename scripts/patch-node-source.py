@@ -7,7 +7,7 @@ Supports Node.js 18.x – 24.x. All patches are idempotent (safe to re-run).
 Patches
 -------
 1. android_configure.py
-   - add ``--shared --with-intl=none`` to the Android configure args
+   - add ``--shared --with-intl=small-icu`` to the Android configure args
    - export CC_host / CXX_host so gyp can build the *host* snapshot tools
 
 2. deps/v8/src/trap-handler/trap-handler.h
@@ -84,19 +84,20 @@ def patch_configure(root: Path) -> None:
         else:
             raise PatchError("Could not locate the CXX export line in android_configure.py")
 
-    # Build a shared library without bundled ICU (smaller, avoids ICU cross build).
+    # Build a shared library with the bundled small-icu data (full Intl support;
+    # ICU ships inside the Node source tree, so the cross build needs no network).
     if "--shared" not in text:
         if '"--openssl-no-asm --cross-compiling")' in text:
             text = text.replace(
                 '"--openssl-no-asm --cross-compiling")',
-                '"--openssl-no-asm --with-intl=none --cross-compiling --shared")',
+                '"--openssl-no-asm --with-intl=small-icu --cross-compiling --shared")',
                 1,
             )
             changed = True
         elif "--openssl-no-asm --cross-compiling" in text:
             text = text.replace(
                 "--openssl-no-asm --cross-compiling",
-                "--openssl-no-asm --with-intl=none --cross-compiling --shared",
+                "--openssl-no-asm --with-intl=small-icu --cross-compiling --shared",
                 1,
             )
             changed = True
