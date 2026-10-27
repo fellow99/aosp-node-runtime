@@ -90,8 +90,16 @@
         "sizeMatch": true,
         "pageAlign16k": true
       },
-      "status": "released (GitHub v24.22.1 small-icu rebuild, tag pinned to 2778269; Maven Central publish pending)",
-      "intl": "small-icu"
+      "status": "published to Maven Central (io.github.fellow99:node-runtime:24.22.1, small-icu)",
+      "intl": "small-icu",
+      "mavenCentral": {
+        "coordinates": "io.github.fellow99:node-runtime:24.22.1",
+        "aar": "https://repo1.maven.org/maven2/io/github/fellow99/node-runtime/24.22.1/node-runtime-24.22.1.aar",
+        "aarSize": 27607401,
+        "deploymentId": "bfe63820-c5b5-4b5e-b913-335fbb432b4a",
+        "tag": "node-runtime-v24.22.1",
+        "published": true
+      }
     },
     {
       "node": "24.2.0",
@@ -154,7 +162,9 @@
   ],
   "matrix": {
     "minSdk": 24,
-    "abi": ["arm64-v8a"],
+    "abi": [
+      "arm64-v8a"
+    ],
     "note": "Bundles libc++_shared.so. Consumers add runtimeOnly(\"io.github.fellow99:node-runtime:24.2.0\"); the bridge loads libnode.so via dlopen at runtime."
   }
 }

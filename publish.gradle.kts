@@ -51,12 +51,18 @@ mp("pomFromGradleProperties")
 // requiresToken=false（配置期不强制 Token，任务执行前另有下方 enabled 门禁）；validation=null 走默认。
 // 双 primitive 重载 (boolean, boolean)：第一参 requiresToken，第二参 = 是否验证 deployment。
 // 用 (false, false)：配置期不强制 Token、不做 deployment 验证（任务执行前另有 enabled 门禁）。
-val ptmc2BoolMethod = mavenPublishingExt.javaClass.methods
+// 发布模式（0.37.0 的 DeploymentValidation）：
+//   默认 NONE  = 上传后人工在 Central Portal 点 Publish（USER_MANAGED，保持旧行为）；
+//   -PAUTOMATIC_RELEASE=true = PUBLISHED（校验通过后自动发布，并等待其上线 Maven Central）。
+val dvClass = Class.forName("com.vanniktech.maven.publish.DeploymentValidation", true, project.buildscript.classLoader)
+val centralValidation = if (providers.gradleProperty("AUTOMATIC_RELEASE").orNull?.toBoolean() == true)
+    dvClass.getDeclaredField("PUBLISHED").get(null) else dvClass.getDeclaredField("NONE").get(null)
+val ptmcMethod = mavenPublishingExt.javaClass.methods
     .first { it.name == "publishToMavenCentral" && it.parameterCount == 2
         && it.parameterTypes[0] == java.lang.Boolean.TYPE
-        && it.parameterTypes[1] == java.lang.Boolean.TYPE }
+        && it.parameterTypes[1] == dvClass }
 try {
-    ptmc2BoolMethod.invoke(mavenPublishingExt, java.lang.Boolean.FALSE, java.lang.Boolean.FALSE)
+    ptmcMethod.invoke(mavenPublishingExt, java.lang.Boolean.FALSE, centralValidation)
 } catch (e: java.lang.reflect.InvocationTargetException) {
     throw e.targetException
 }
