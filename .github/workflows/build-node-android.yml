@@ -128,6 +128,12 @@ jobs:
         run: |
           archive="node-v${NODE_VERSION}-android-arm64-v8a.tar.gz"
           notes="Cross-compiled, stripped libnode.so (shared library) + libc++_shared.so for Android arm64-v8a (API ${ANDROID_API}). Built with NDK ${NDK_VERSION}; see BUILD-METADATA.txt in the archive."
+          # Node >= 26 builds Temporal from Rust crates with no upstream Android
+          # cross target; the engine is configured --v8-disable-temporal-support,
+          # so the Temporal API is absent.
+          if [ "${NODE_VERSION%%.*}" -ge 26 ]; then
+            notes="${notes}"$'\n\n'"Note: Temporal is disabled (--v8-disable-temporal-support); this build does not provide the Temporal API."
+          fi
           preflag=(); [ "$PRERELEASE" = "true" ] && preflag=(--prerelease)
           if gh release view "v${NODE_VERSION}" >/dev/null 2>&1; then
             # Re-build: replace the assets on the existing release, pin its tag to

@@ -8,6 +8,9 @@ Patches
 -------
 1. android_configure.py
    - add ``--shared --with-intl=small-icu`` to the Android configure args
+   - add ``--v8-disable-temporal-support`` for Node >= 26: the Rust Temporal
+     crates have no upstream Android cross target and would otherwise build as
+     host x86_64 objects that fail the aarch64 link. The engine has no Temporal.
    - export CC_host / CXX_host so gyp can build the *host* snapshot tools
 
 2. deps/v8/src/trap-handler/trap-handler.h
@@ -103,6 +106,31 @@ def patch_configure(root: Path) -> None:
             changed = True
         else:
             raise PatchError("Could not locate configure args in android_configure.py")
+
+    # Node >= 26 builds Temporal out of Rust crates (deps/crates) and, for an
+    # Android cross build, configure leaves cargo_rust_target empty so cargo
+    # emits host x86_64 objects that fail the aarch64 link ("... is incompatible
+    # with aarch64linux"). Upstream configures no Rust Android target yet, so
+    # match the OpenHarmony pipeline and disable Temporal (skips cargo). The
+    # released libnode.so therefore does NOT expose the Temporal API.
+    if "--v8-disable-temporal-support" not in text:
+        anchor = '"--openssl-no-asm'
+        if anchor in text:
+            text = text.replace(
+                anchor,
+                '"--v8-disable-temporal-support --openssl-no-asm',
+                1,
+            )
+            changed = True
+        elif "--openssl-no-asm" in text:
+            text = text.replace(
+                "--openssl-no-asm",
+                "--v8-disable-temporal-support --openssl-no-asm",
+                1,
+            )
+            changed = True
+        else:
+            print("  skip (configure args marker absent): temporal disable")
 
     if changed:
         path.write_text(text, encoding="utf-8")
