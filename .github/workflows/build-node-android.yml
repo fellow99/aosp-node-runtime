@@ -25,9 +25,9 @@ permissions:
 jobs:
   build-arm64-v8a:
     runs-on: ubuntu-24.04
-    # Node 26 / V8 14.6 full cross-build (target + host snapshot tools) exceeds 3 h
-    # on a 4-core runner; mirror the OpenHarmony workflow's 360 m ceiling.
-    timeout-minutes: 360
+    # No explicit timeout-minutes: a cold V8 cross-build can run for hours on a
+    # 4-core hosted runner and was being cut off while still compiling. Leave it
+    # to the platform default ceiling (6 h/job) and cancel manually if needed.
     env:
       NODE_VERSION: ${{ inputs.node_version || '24.2.0' }}
       ANDROID_API: ${{ inputs.android_api || '24' }}
