@@ -2,7 +2,7 @@
 """Apply the minimal source changes needed to build Node.js as an Android
 arm64-v8a *shared* library (libnode.so).
 
-Supports Node.js 18.x – 24.x. All patches are idempotent (safe to re-run).
+Supports Node.js 18.x – 26.x. All patches are idempotent (safe to re-run).
 
 Patches
 -------

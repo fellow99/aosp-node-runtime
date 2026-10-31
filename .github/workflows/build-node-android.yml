@@ -29,7 +29,10 @@ jobs:
     env:
       NODE_VERSION: ${{ inputs.node_version || '24.2.0' }}
       ANDROID_API: ${{ inputs.android_api || '24' }}
-      NDK_VERSION: 28.2.13676358
+      # Node 26+ (V8 14.6) needs clang >= 19.1.0 (C++20 std::atomic_ref). NDK r28
+      # ships clang 19.0.1 and fails compiling deps/v8/src/base/atomicops.h; NDK r30
+      # (30.0.16248370, stable channel-0) ships clang 21.0.0 and still targets API 24.
+      NDK_VERSION: 30.0.16248370
     steps:
       - uses: actions/checkout@v4
 
@@ -80,7 +83,7 @@ jobs:
           readelf -d "$LIBNODE" | grep -E "SONAME|NEEDED"
           # node::Start must be an exported DYNAMIC symbol (survives stripping)
           nm -D "$LIBNODE" | grep "node5Start"
-          # 16 KB page alignment (NDK r28 default; required by Play Store)
+          # 16 KB page alignment (NDK r28+ default; required by Play Store)
           echo "LOAD aligns:"; readelf -lW "$LIBNODE" | awk '/LOAD/{print $NF}' | sort -u
           if readelf -lW "$LIBNODE" | awk '/LOAD/{print strtonum($NF)}' | grep -Evx '16384'; then
             echo "ERROR: a LOAD segment is not 16 KB (0x4000) aligned" >&2; exit 1
