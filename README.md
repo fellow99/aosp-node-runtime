@@ -12,7 +12,19 @@ This repository contains **no embedding API** — only the engine binary, the he
 io.github.fellow99:node-runtime:<node-version>
 ```
 
-The artifact version **equals the Node.js version**. Current release: `24.2.0`.
+The artifact version **equals the Node.js version**. Current release: `26.13.0`.
+
+### Releases — Maven Central (`io.github.fellow99:node-runtime`)
+
+> ⚠️ **AARCH64 (arm64-v8a) only** — no x86 / x86_64 / arm32 artifacts.
+
+| Version | OS | Arch | Link |
+|---|---|---|---|
+| 18.20.4 | Android | arm64-v8a | https://repo1.maven.org/maven2/io/github/fellow99/node-runtime/18.20.4/ |
+| 22.23.4 | Android | arm64-v8a | https://repo1.maven.org/maven2/io/github/fellow99/node-runtime/22.23.4/ |
+| 24.2.0 | Android | arm64-v8a | https://repo1.maven.org/maven2/io/github/fellow99/node-runtime/24.2.0/ |
+| 24.22.1 | Android | arm64-v8a | https://repo1.maven.org/maven2/io/github/fellow99/node-runtime/24.22.1/ |
+| 26.13.0 | Android | arm64-v8a | https://repo1.maven.org/maven2/io/github/fellow99/node-runtime/26.13.0/ |
 
 ## Usage
 
@@ -22,7 +34,7 @@ Add the engine alongside the bridge. It is a `runtimeOnly` dependency — your c
 // build.gradle.kts
 dependencies {
     implementation("io.github.fellow99:node-bridge:0.2.0")
-    runtimeOnly("io.github.fellow99:node-runtime:24.2.0")
+    runtimeOnly("io.github.fellow99:node-runtime:26.13.0")
 }
 ```
 
@@ -53,7 +65,7 @@ The binary is **not committed** and is never built by hand. [`build-node-android
 Trigger a build manually with the Node version as input:
 
 ```bash
-gh workflow run build-node-android.yml -f node_version=24.2.0 -f android_api=24
+gh workflow run build-node-android.yml -f node_version=26.13.0 -f android_api=24
 ```
 
 ## Repository layout

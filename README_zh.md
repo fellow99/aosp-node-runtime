@@ -12,7 +12,19 @@
 io.github.fellow99:node-runtime:<node-version>
 ```
 
-构件版本号**等于 Node.js 版本号**。当前版本：`24.2.0`。
+构件版本号**等于 Node.js 版本号**。当前版本：`26.13.0`。
+
+### 发布版本 —— Maven Central（`io.github.fellow99:node-runtime`）
+
+> ⚠️ **只发布 AArch64（arm64-v8a）一个架构**——无 x86 / x86_64 / arm32 包。
+
+| 版本 | 操作系统 | 架构 | 链接 |
+|---|---|---|---|
+| 18.20.4 | Android | arm64-v8a | https://repo1.maven.org/maven2/io/github/fellow99/node-runtime/18.20.4/ |
+| 22.23.4 | Android | arm64-v8a | https://repo1.maven.org/maven2/io/github/fellow99/node-runtime/22.23.4/ |
+| 24.2.0 | Android | arm64-v8a | https://repo1.maven.org/maven2/io/github/fellow99/node-runtime/24.2.0/ |
+| 24.22.1 | Android | arm64-v8a | https://repo1.maven.org/maven2/io/github/fellow99/node-runtime/24.22.1/ |
+| 26.13.0 | Android | arm64-v8a | https://repo1.maven.org/maven2/io/github/fellow99/node-runtime/26.13.0/ |
 
 ## 用法
 
@@ -22,7 +34,7 @@ io.github.fellow99:node-runtime:<node-version>
 // build.gradle.kts
 dependencies {
     implementation("io.github.fellow99:node-bridge:0.2.0")
-    runtimeOnly("io.github.fellow99:node-runtime:24.2.0")
+    runtimeOnly("io.github.fellow99:node-runtime:26.13.0")
 }
 ```
 
@@ -53,7 +65,7 @@ jni/arm64-v8a/libc++_shared.so    # C++ 运行时（本包是唯一供给方）
 可手动传入 Node 版本触发构建：
 
 ```bash
-gh workflow run build-node-android.yml -f node_version=24.2.0 -f android_api=24
+gh workflow run build-node-android.yml -f node_version=26.13.0 -f android_api=24
 ```
 
 ## 仓库结构
