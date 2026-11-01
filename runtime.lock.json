@@ -1,7 +1,7 @@
 {
   "$comment": "Runtime single source of truth: version + SHA-256 + gates + provenance. Binaries are NOT committed; CI (build-node-android.yml) builds libnode.so and tools/provision.mjs deploys it. See README.md.",
   "active": {
-    "node": "24.22.1",
+    "node": "26.13.0",
     "abi": "arm64-v8a"
   },
   "releases": [
@@ -46,7 +46,15 @@
         "sizeMatch": true,
         "pageAlign16k": true
       },
-      "status": "released (GitHub v22.23.4; Maven Central publish pending)"
+      "mavenCentral": {
+        "coordinates": "io.github.fellow99:node-runtime:22.23.4",
+        "aar": "https://repo1.maven.org/maven2/io/github/fellow99/node-runtime/22.23.4/node-runtime-22.23.4.aar",
+        "aarSize": 24114899,
+        "deploymentId": "0a38873e-1c54-42b9-9fc3-7aa41c2ddf43",
+        "tag": "node-runtime-v22.23.4",
+        "published": true
+      },
+      "status": "published to Maven Central (io.github.fellow99:node-runtime:22.23.4, small-icu)"
     },
     {
       "node": "24.22.1",
@@ -158,6 +166,58 @@
         "published": true
       },
       "status": "published to Maven Central (io.github.fellow99:node-runtime:24.2.0)"
+    },
+    {
+      "node": "26.13.0",
+      "abi": "arm64-v8a",
+      "size": 87757048,
+      "sha256": "bc5d15f825a74ad089087cb4f5eaddb1c178d6152de7171270483e31651094d5",
+      "soname": "libnode.so",
+      "source": "self-built: nodejs/node@v26.13.0 + Android NDK r30 (30.0.16248370), Temporal disabled (--v8-disable-temporal-support)",
+      "release": {
+        "tag": "v26.13.0",
+        "url": "https://github.com/fellow99/aosp-node-runtime/releases/tag/v26.13.0",
+        "archive": "node-v26.13.0-android-arm64-v8a.tar.gz",
+        "archiveSize": 29969979,
+        "archiveSha256": "3251e7acd7f9ed781fc06c6a1730255c77a7839fd2b4c03a26d63a4197f6e3d6",
+        "prerelease": false
+      },
+      "tier": "target",
+      "builtFrom": {
+        "tag": "node v26.13.0",
+        "ndk": "r30 (30.0.16248370)",
+        "androidApi": 24,
+        "configure": "./configure --dest-cpu=arm64 --dest-os=android --openssl-no-asm --with-intl=small-icu --cross-compiling --shared --v8-disable-temporal-support",
+        "note": "Node 26 Temporal uses Rust crates without an Android cross target; disabled via configure flag. cpu-features via deps/zlib/zlib.gyp.",
+        "stripped": "llvm-strip --strip-unneeded",
+        "sizeUnstripped": null
+      },
+      "libcxx": {
+        "name": "libc++_shared.so",
+        "source": "NDK r30 sysroot (aarch64-linux-android), llvm-strip --strip-unneeded",
+        "size": 1423696,
+        "sha256": "b5d97c38a728afe28d341cda3369f512d35eaf9c680c1b0563cd6a63e395230f",
+        "sizeUnstripped": null
+      },
+      "gates": {
+        "eTypeEtDyn": true,
+        "ptInterp": 0,
+        "eMachineAArch64": true,
+        "soname": "libnode.so",
+        "startSym": "_ZN4node5StartEiPPc defined + exported",
+        "sha256Match": true,
+        "sizeMatch": true,
+        "pageAlign16k": true
+      },
+      "mavenCentral": {
+        "coordinates": "io.github.fellow99:node-runtime:26.13.0",
+        "aar": "https://repo1.maven.org/maven2/io/github/fellow99/node-runtime/26.13.0/node-runtime-26.13.0.aar",
+        "aarSize": 29219362,
+        "deploymentId": "016f84e3-8dbf-4224-9cd2-13dcde11cc0c",
+        "tag": "node-runtime-v26.13.0",
+        "published": true
+      },
+      "status": "published to Maven Central (io.github.fellow99:node-runtime:26.13.0, small-icu, Temporal disabled)"
     }
   ],
   "matrix": {
