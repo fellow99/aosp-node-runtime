@@ -10,3 +10,6 @@ node-runtime/src/main/jniLibs/**/*.so
 
 # provision download/extract workspace
 .dist/
+
+# 探针测试报告留档（不入库）
+logs/

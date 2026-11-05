@@ -3,3 +3,4 @@ agp = "9.2.1"
 
 [plugins]
 android-library = { id = "com.android.library", version.ref = "agp" }
+android-application = { id = "com.android.application", version.ref = "agp" }

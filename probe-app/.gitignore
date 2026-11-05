@@ -1,0 +1,8 @@
+# Gradle 产物与本地配置不入库（与仓内二进制纪律一致）
+build/
+local.properties
+.gradle/
+*.apk
+
+# JNI 垫片二进制不入库（.c 源码 + 编译命令在 docs/，按需本地 NDK 交叉编译投放）
+src/main/jniLibs/**/*.so
