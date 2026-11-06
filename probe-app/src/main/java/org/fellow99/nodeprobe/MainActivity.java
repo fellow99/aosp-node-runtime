@@ -147,18 +147,21 @@ public class MainActivity extends android.app.Activity {
         final String nd = nativeDir;
 
         // PRB-01 载荷就位（FR-101-PROBE-001）
-        l.add(new Probe("PRB-01", "载荷就位（libnode.so/libc++_shared.so 在 nativeLibraryDir，arm64 唯一 ABI）", 30_000, () -> {
+        l.add(new Probe("PRB-01", "载荷就位（libnode.so/libc++_shared.so 在 nativeLibraryDir，arm64 载荷）", 30_000, () -> {
             java.io.File node = new java.io.File(nd, "libnode.so");
             java.io.File cxx = new java.io.File(nd, "libc++_shared.so");
             String abis = abisLine();
-            boolean arm64Only = true;
-            for (String a : android.os.Build.SUPPORTED_ABIS) {
-                if (!a.startsWith("arm64")) arm64Only = false;
-            }
             if (!node.isFile() || node.length() == 0) return "FAIL|libnode.so 缺失或空：" + node.getAbsolutePath();
             if (!cxx.isFile() || cxx.length() == 0) return "FAIL|libc++_shared.so 缺失或空：" + cxx.getAbsolutePath();
-            if (!arm64Only) return "FAIL|非 arm64 唯一 ABI：" + abis;
-            return null;
+            // 「arm64 唯一 ABI」按打包面判据（APK 载荷目录），不按设备面 abilist：
+            // 真机 CPU 常上报 32 位 ABI（armeabi-v7a/armeabi），但本项目 APK abiFilters 只装
+            // arm64-v8a 载荷（本判据验证的正是该打包契约）；设备 abis 由报告 root（abi= 行）
+            // 如实记录为 FACT，不作为 FAIL。
+            java.io.File ndDir = new java.io.File(nd);
+            if (!ndDir.getName().toLowerCase(java.util.Locale.ROOT).contains("arm64")) {
+                return "FAIL|载荷目录非 arm64 ABI：" + nd;
+            }
+            return "PASS-FACT|payloadAbi=" + ndDir.getName() + " deviceAbis=" + abis;
         }));
 
         // PRB-02 引擎加载（FR-101-PROBE-002）
