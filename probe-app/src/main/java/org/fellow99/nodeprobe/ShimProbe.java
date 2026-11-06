@@ -42,4 +42,11 @@ public final class ShimProbe {
      * 最后一次 dlsym/dlopen 失败的 dlerror 文本。
      */
     public static native String getDlError();
+
+    /**
+     * PRB-05 进程内执行（FR-101-PROBE-005）：在独立 32MB 栈线程调用
+     * node::Start({node, -e, script})，stdout/stderr 重定向到 outFile；
+     * 返回 node::Start 退出码（负值 = 垫片错误，见 probe_shim.c）。
+     */
+    public static native int runNodeE(String script, String outFile);
 }

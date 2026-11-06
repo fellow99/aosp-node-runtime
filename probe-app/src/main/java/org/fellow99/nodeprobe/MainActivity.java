@@ -210,10 +210,34 @@ public class MainActivity extends android.app.Activity {
             return "PASS-FACT|addr=0x" + Long.toHexString(addr);
         }));
 
-        // PRB-05 进程内执行（FR-101-PROBE-005，⬜ 后续批次，不硬造）
-        l.add(new Probe("PRB-05", "进程内执行 node -e 回程 v26.13.0（⬜）", 5_000, () ->
-                "BLOCKED:FR-101-PROBE-005 进程内执行（node -e 回程）本批次不实现——需 isolate 引导 + "
-                        + "stdout 捕获 + 进程内安全隔离与超时，无法在本批次（无设备窗口）验证；⬜ 后续批次（不硬造）。"));
+        // PRB-05 进程内执行（FR-101-PROBE-005，20261107 实装：shim runNodeE 32MB 栈线程
+        // 调 node::Start -e，stdout 落文件回读；node::Start 每进程一次，本 probe 为末位）
+        l.add(new Probe("PRB-05", "进程内执行 node -e 回程 v26.13.0", 120_000, () -> {
+            String err = ShimProbe.ensureLoaded();
+            if (err != null) {
+                return "FAIL|shim 加载失败: " + err;
+            }
+            java.io.File out = new java.io.File(getFilesDir(), "prb05-out.txt");
+            int rc;
+            try {
+                rc = ShimProbe.runNodeE("console.log('node-version=' + process.version)",
+                        out.getAbsolutePath());
+            } catch (Throwable t) {
+                return "FAIL|runNodeE 异常: " + t.getClass().getName() + ": " + t.getMessage();
+            }
+            String text = "";
+            try {
+                text = new String(java.nio.file.Files.readAllBytes(out.toPath()),
+                        java.nio.charset.StandardCharsets.UTF_8);
+            } catch (Exception ignored) {
+            }
+            if (rc != 0) {
+                return "FAIL|rc=" + rc + " out=" + text.trim() + " shimErr=" + ShimProbe.getDlError();
+            }
+            return text.contains("node-version=v26.13.0")
+                    ? "PASS-FACT|进程内 node -e 回程: " + text.trim()
+                    : "FAIL|rc=0 但输出不符: " + text.trim() + " shimErr=" + ShimProbe.getDlError();
+        }));
 
         return l;
     }
